@@ -7,6 +7,7 @@
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
         .btn { background: #0088cc; color: white; border: none; padding: 10px 15px; border-radius: 5px; margin-top: 20px; }
         .debug { background: #f5f5f5; padding: 10px; margin-top: 20px; text-align: left; font-family: monospace; }
+        .error { color: red; }
     </style>
 </head>
 <body>
@@ -33,25 +34,18 @@
                 ${tg.initData}
             `;
             
-            // Отправляем данные на сервер
-            fetch('https://textbook-vhs-capability-jet.trycloudflare.com/auth', {
-                method: 'POST',
+            // Отправляем данные на сервер (GET запрос)
+            fetch('https://textbook-vhs-capability-jet.trycloudflare.com/webapp', {
+                method: 'GET',
                 headers: { 
-                    'Content-Type': 'application/json',
                     'X-Telegram-Init-Data': tg.initData
-                },
-                body: JSON.stringify({
-                    initData: tg.initData,
-                    user: {
-                        id: user.id,
-                        first_name: user.first_name,
-                        username: user.username
-                    }
-                })
+                }
             })
             .then(response => {
                 if (!response.ok) {
-                    return response.text().then(text => { throw new Error(text) });
+                    return response.text().then(text => { 
+                        throw new Error(`HTTP ${response.status}: ${text}`) 
+                    });
                 }
                 return response.json();
             })
@@ -61,8 +55,10 @@
             })
             .catch(error => {
                 console.error("Request failed:", error);
-                debugEl.innerHTML += `<br><strong>Error:</strong><br>${error.message}`;
+                debugEl.innerHTML += `<br><strong class="error">Error:</strong><br>${error.message}`;
             });
+        } else {
+            debugEl.innerHTML = "<strong class='error'>No user data available</strong>";
         }
 
         // Кнопка кошелька
