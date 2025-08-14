@@ -1,1 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Telegram Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        .btn { background: #0088cc; color: white; border: none; padding: 10px 15px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1 id="greeting">Loading...</h1>
+    <button class="btn" id="walletBtn">Connect Wallet</button>
 
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // На весь экран
+        
+        // Показываем данные пользователя
+        const user = tg.initDataUnsafe?.user;
+        if (user) {
+            document.getElementById("greeting").textContent = `Hello, ${user.first_name}!`;
+            console.log("Telegram User:", user);
+            
+            // Отправляем данные на бэкенд
+            fetch('https://textbook-vhs-capability-jet.trycloudflare.com/auth', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Telegram-Init-Data': tg.initData
+                },
+                body: JSON.stringify({
+                    id: user.id,
+                    username: user.username
+                })
+            }).then(res => res.json()).then(console.log);
+        }
+
+        // Кнопка кошелька (заглушка)
+        document.getElementById("walletBtn").addEventListener('click', () => {
+            tg.showPopup({ title: "Wallet", message: "Здесь будет TonConnect" });
+        });
+    </script>
+</body>
+</html>
