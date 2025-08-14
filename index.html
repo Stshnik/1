@@ -5,24 +5,35 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        .btn { background: #0088cc; color: white; border: none; padding: 10px 15px; border-radius: 5px; }
+        .btn { background: #0088cc; color: white; border: none; padding: 10px 15px; border-radius: 5px; margin-top: 20px; }
+        .debug { background: #f5f5f5; padding: 10px; margin-top: 20px; text-align: left; font-family: monospace; }
     </style>
 </head>
 <body>
     <h1 id="greeting">Loading...</h1>
     <button class="btn" id="walletBtn">Connect Wallet</button>
+    <div class="debug" id="debugInfo"></div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // На весь экран
+        tg.expand();
         
         // Показываем данные пользователя
         const user = tg.initDataUnsafe?.user;
+        const debugEl = document.getElementById('debugInfo');
+        
         if (user) {
             document.getElementById("greeting").textContent = `Hello, ${user.first_name}!`;
-            console.log("Telegram User:", user);
             
-            // Отправляем данные на бэкенд
+            // Отладочная информация
+            debugEl.innerHTML = `
+                <strong>User Data:</strong><br>
+                ${JSON.stringify(user, null, 2)}<br><br>
+                <strong>Init Data:</strong><br>
+                ${tg.initData}
+            `;
+            
+            // Отправляем данные на сервер
             fetch('https://textbook-vhs-capability-jet.trycloudflare.com/auth', {
                 method: 'POST',
                 headers: { 
@@ -30,13 +41,31 @@
                     'X-Telegram-Init-Data': tg.initData
                 },
                 body: JSON.stringify({
-                    id: user.id,
-                    username: user.username
+                    initData: tg.initData,
+                    user: {
+                        id: user.id,
+                        first_name: user.first_name,
+                        username: user.username
+                    }
                 })
-            }).then(res => res.json()).then(console.log);
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => { throw new Error(text) });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Server response:", data);
+                debugEl.innerHTML += `<br><strong>Server Response:</strong><br>${JSON.stringify(data, null, 2)}`;
+            })
+            .catch(error => {
+                console.error("Request failed:", error);
+                debugEl.innerHTML += `<br><strong>Error:</strong><br>${error.message}`;
+            });
         }
 
-        // Кнопка кошелька (заглушка)
+        // Кнопка кошелька
         document.getElementById("walletBtn").addEventListener('click', () => {
             tg.showPopup({ title: "Wallet", message: "Здесь будет TonConnect" });
         });
