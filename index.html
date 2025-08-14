@@ -15,6 +15,9 @@
             border-radius: 10px;
             background: #f5f5f5;
             min-height: 60px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            text-align: left;
         }
         .success { background: #e8f5e9; color: #2e7d32; }
         .error { background: #ffebee; color: #c62828; }
@@ -26,29 +29,32 @@
             border-radius: 8px;
             font-size: 16px;
             cursor: pointer;
+            margin: 10px;
         }
     </style>
 </head>
 <body>
     <h1>Мой WebApp</h1>
-    <div id="status">Готов к работе</div>
     <button id="actionBtn">Отправить запрос</button>
+    <div id="status">Готов к работе</div>
+    <button id="testBtn">Тестовый запрос</button>
 
     <script>
         const tg = window.Telegram.WebApp;
         const statusDiv = document.getElementById('status');
         const actionBtn = document.getElementById('actionBtn');
+        const testBtn = document.getElementById('testBtn');
 
         // Функция для отображения статуса
         function showStatus(message, isError = false) {
-            statusDiv.textContent = message;
+            statusDiv.innerHTML = message;
             statusDiv.className = isError ? 'error' : 'success';
         }
 
-        // Обработчик кнопки
-        actionBtn.addEventListener('click', async () => {
+        // Общая функция отправки
+        async function sendRequest(initData) {
             try {
-                showStatus("Отправка запроса...");
+                showStatus("⌛ Отправка запроса...");
                 
                 const SERVER_URL = 'https://electoral-nb-dame-determine.trycloudflare.com:8000/webapp';
                 
@@ -56,28 +62,43 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Telegram-Init-Data': tg.initData
+                        'X-Telegram-Init-Data': initData
                     },
                     body: JSON.stringify({
-                        initData: tg.initData,
-                        userId: tg.initDataUnsafe?.user?.id
+                        initData: initData,
+                        timestamp: new Date().toISOString()
                     })
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Ошибка сервера: ${response.status}`);
+                    const errorText = await response.text();
+                    throw new Error(`Ошибка сервера: ${errorText}`);
                 }
 
                 const data = await response.json();
-                showStatus(`Успех! Ответ: ${JSON.stringify(data)}`);
+                showStatus(`✅ Успешный ответ:\n${JSON.stringify(data, null, 2)}`);
             } catch (error) {
-                showStatus(`Ошибка: ${error.message}`, true);
+                showStatus(`❌ Ошибка:\n${error.message}`, true);
             }
+        }
+
+        // Обработчики кнопок
+        actionBtn.addEventListener('click', () => {
+            if (!tg.initData) {
+                showStatus("⚠️ Нет данных от Telegram", true);
+                return;
+            }
+            sendRequest(tg.initData);
+        });
+
+        testBtn.addEventListener('click', () => {
+            sendRequest("test");
         });
 
         // Инициализация
         tg.expand();
         tg.ready();
+        showStatus("🟢 Приложение готово\nНажмите кнопку для отправки запроса");
     </script>
 </body>
 </html>
