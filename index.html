@@ -1,70 +1,86 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My Telegram Game</title>
+    <title>Telegram WebApp</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        .btn { background: #0088cc; color: white; border: none; padding: 10px 15px; border-radius: 5px; margin-top: 20px; }
-        .debug { background: #f5f5f5; padding: 10px; margin-top: 20px; text-align: left; font-family: monospace; }
-        .error { color: red; }
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .debug { background: #f5f5f5; padding: 15px; margin-top: 20px; border-radius: 5px; }
+        .error { color: #d32f2f; }
+        .success { color: #388e3c; }
     </style>
 </head>
 <body>
-    <h1 id="greeting">Loading...</h1>
-    <button class="btn" id="walletBtn">Connect Wallet</button>
-    <div class="debug" id="debugInfo"></div>
+    <div class="container">
+        <h1 id="greeting">Loading Telegram WebApp...</h1>
+        <div class="debug" id="debugInfo"></div>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand();
-        
-        // Показываем данные пользователя
-        const user = tg.initDataUnsafe?.user;
         const debugEl = document.getElementById('debugInfo');
         
-        if (user) {
-            document.getElementById("greeting").textContent = `Hello, ${user.first_name}!`;
-            
-            // Отладочная информация
+        // Инициализация
+        tg.expand();
+        tg.enableClosingConfirmation();
+        
+        function logDebugInfo() {
             debugEl.innerHTML = `
-                <strong>User Data:</strong><br>
-                ${JSON.stringify(user, null, 2)}<br><br>
-                <strong>Init Data:</strong><br>
-                ${tg.initData}
+                <h3>Debug Information</h3>
+                <p><strong>Init Data:</strong><br>
+                <pre>${tg.initData || 'N/A'}</pre></p>
+                
+                <p><strong>User Data:</strong><br>
+                <pre>${JSON.stringify(tg.initDataUnsafe?.user || {}, null, 2)}</pre></p>
             `;
-            
-            // Отправляем данные на сервер (GET запрос)
-            fetch('https://textbook-vhs-capability-jet.trycloudflare.com/webapp', {
-                method: 'GET',
-                headers: { 
-                    'X-Telegram-Init-Data': tg.initData
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.text().then(text => { 
-                        throw new Error(`HTTP ${response.status}: ${text}`) 
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log("Server response:", data);
-                debugEl.innerHTML += `<br><strong>Server Response:</strong><br>${JSON.stringify(data, null, 2)}`;
-            })
-            .catch(error => {
-                console.error("Request failed:", error);
-                debugEl.innerHTML += `<br><strong class="error">Error:</strong><br>${error.message}`;
-            });
-        } else {
-            debugEl.innerHTML = "<strong class='error'>No user data available</strong>";
         }
 
-        // Кнопка кошелька
-        document.getElementById("walletBtn").addEventListener('click', () => {
-            tg.showPopup({ title: "Wallet", message: "Здесь будет TonConnect" });
-        });
+        async function sendToServer() {
+            if (!tg.initData) {
+                debugEl.innerHTML += `<p class="error">No initData available</p>`;
+                return;
+            }
+
+            try {
+                const response = await fetch('https://your-server.com/webapp', {
+                    method: 'GET',
+                    headers: {
+                        'X-Telegram-Init-Data': tg.initData
+                    },
+                    mode: 'cors'
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server error: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                debugEl.innerHTML += `
+                    <p class="success">Server response:</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+                if (data.user) {
+                    document.getElementById('greeting').textContent = 
+                        `Hello, ${JSON.parse(data.user).first_name}!`;
+                }
+            } catch (error) {
+                console.error('Request failed:', error);
+                debugEl.innerHTML += `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+
+        // Основной поток выполнения
+        if (tg.initDataUnsafe?.user) {
+            document.getElementById('greeting').textContent = 
+                `Hello, ${tg.initDataUnsafe.user.first_name}!`;
+            logDebugInfo();
+            sendToServer();
+        } else {
+            debugEl.innerHTML = `<p class="error">WebApp not initialized properly</p>`;
+        }
     </script>
 </body>
 </html>
